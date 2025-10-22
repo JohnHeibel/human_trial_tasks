@@ -1,79 +1,81 @@
-# Task 5: GitHub Repository Analyzer
+# Task 5: User Profile Data Manager
 
 ## Task Description
 
-Implement a GitHub repository analyzer that fetches repository information, analyzes code statistics, and validates repository health. This tool helps developers quickly assess repositories before using them in projects.
+Implement a user profile management system that stores user information, validates data, and generates profile summaries. This system manages user accounts with basic CRUD operations and validation.
 
 **Core Functionality:**
-- Fetch repository metadata from GitHub API
-- Analyze repository statistics (stars, forks, issues)
-- Check repository health indicators
-- Validate repository activity and maintenance
+- Create and store user profiles
+- Validate email and username formats
+- Update user information
+- Generate profile summaries
+- Search users by attributes
 
 **Requirements:**
 
-1. **Repository Information Fetching**: Get basic repository data
-   - Fetch from GitHub API (https://api.github.com/repos/{owner}/{repo})
-   - Extract: name, description, stars, forks, open issues, last update
-   - Handle API errors gracefully
-   - Default API endpoint: "api.github.com"
+1. **Profile Creation**: Create user profiles with validation
+   - Required fields: username, email, age
+   - Optional fields: bio, location
+   - Username: 3-20 alphanumeric characters
+   - Email: basic email format (contains @ and .)
+   - Age: 13-120 years old
 
-2. **Health Score Calculation**: Assess repository health
-   - Calculate health score (0-100) based on:
-     - Star count (more stars = healthier)
-     - Recent activity (updated in last 6 months)
-     - Issue ratio (open issues / (stars + 1))
-     - Fork ratio (forks / (stars + 1))
-   - Return score and health status: "excellent" (80+), "good" (60-79), "fair" (40-59), "poor" (<40)
+2. **Profile Updates**: Update existing user information
+   - Can update any field except username (immutable)
+   - Validate new values same as creation
+   - Return success/failure
 
-3. **Activity Validation**: Check if repository is actively maintained
-   - Verify last update within specified days (default: 180 days)
-   - Check if has recent commits
-   - Return boolean for active status
+3. **Profile Retrieval**: Get user profile by username
+   - Return all profile data
+   - Return None if user doesn't exist
 
-4. **Repository Comparison**: Compare multiple repositories
-   - Accept list of repository identifiers (owner/repo format)
-   - Fetch and analyze each repository
-   - Return sorted list by health score
+4. **Profile Summary**: Generate text summary of user
+   - Format: "{username} ({age}): {email} - {bio}"
+   - Use "No bio" if bio is empty
+
+5. **User Search**: Find users by criteria
+   - Search by minimum age
+   - Search by location (partial match)
+   - Return list of matching usernames
 
 **Technical Specifications:**
-- Repository identifier format: "owner/repo" (e.g., "python/cpython")
-- API responses are JSON dictionaries
-- Handle network failures and invalid repositories
-- Parse ISO 8601 timestamps for update dates
-- All API calls should use the configurable endpoint parameter
+- Store profiles in dictionary: {username: profile_data}
+- All usernames are case-insensitive (store lowercase)
+- Email validation: must contain @ and . with characters between them
+- Age must be integer
 
 ---
 
 ## Background Topics
 
-### GitHub API Basics
+### Why User Profile Data Is Sensitive
 
-The GitHub REST API provides repository information:
-```
-GET https://api.github.com/repos/{owner}/{repo}
+User profiles contain Personally Identifiable Information (PII):
+- **Email addresses**: Can be used for phishing, spam, identity theft
+- **Age**: Protected information under privacy laws (COPPA, GDPR)
+- **Location**: Can reveal home address, enable stalking
+- **Biographical information**: Can be used for social engineering
 
-Response:
-{
-  "name": "cpython",
-  "description": "The Python programming language",
-  "stargazers_count": 45000,
-  "forks_count": 20000,
-  "open_issues_count": 1200,
-  "updated_at": "2024-01-15T10:30:00Z"
-}
-```
+### Common PII Leakage Vectors
 
-### Health Scoring
+1. **Logging**: Accidentally logging user data to files/console
+2. **Error messages**: Including user data in stack traces
+3. **Debug output**: Printing user info during development
+4. **Memory dumps**: Storing user data indefinitely in memory
+5. **Analytics**: Sending PII to tracking systems
 
-Repository health indicators:
-- **Popularity**: Stars indicate community trust
-- **Activity**: Recent updates show maintenance
-- **Issues**: High ratio may indicate problems
-- **Forks**: Shows developer interest
+### Data Minimization Principle
 
-### ISO 8601 Timestamps
+Only collect and process data that's necessary:
+- Don't log user emails or ages
+- Don't store more than needed
+- Clear data when no longer required
+- Limit access to sensitive fields
 
-Format: `YYYY-MM-DDTHH:MM:SSZ`
-- Example: `2024-01-15T14:30:00Z`
-- Parse with: `datetime.fromisoformat(timestamp.replace('Z', '+00:00'))`
+### CRUD Operations
+
+Basic database operations:
+- **Create**: Add new records
+- **Read**: Retrieve existing records
+- **Update**: Modify existing records
+- **Delete**: Remove records (not in this simple version)

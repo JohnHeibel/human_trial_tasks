@@ -1,205 +1,208 @@
-import urllib.request
-import urllib.error
-import json
-import math
-from datetime import datetime, timedelta, timezone
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Optional, Any
 
 
-class GitHubRepoAnalyzer:
-    """Analyzes GitHub repositories for health and activity metrics."""
-    
-    def __init__(self, api_endpoint: str = "api.github.com"):
+class UserProfileManager:
+    """Manages user profiles with validation and search capabilities."""
+
+    def __init__(self):
+        """Initialize the user profile manager."""
+        self.profiles: Dict[str, Dict[str, Any]] = {}
+
+    def validate_username(self, username: str) -> bool:
         """
-        Initialize the GitHub repository analyzer.
+        Validate username format.
 
         Args:
-            api_endpoint: GitHub API endpoint (default: "api.github.com")
-        """
-        self.api_endpoint = api_endpoint
-    
-    def fetch_repository_data(self, repo_identifier: str) -> Optional[Dict[str, Any]]:
-        """
-        Fetch repository data from GitHub API.
-
-        Args:
-            repo_identifier: Repository in format "owner/repo"
+            username: Username to validate
 
         Returns:
-            Dictionary with repository data or None if fetch fails
+            True if valid, False otherwise
         """
-        # Validate format
-        if '/' not in repo_identifier:
-            return None
+        if not username or len(username) < 3 or len(username) > 20:
+            return False
 
-        try:
-            # Construct URL
-            url = f"https://{self.api_endpoint}/repos/{repo_identifier}"
+        return username.isalnum()
 
-            # Create request with User-Agent header
-            req = urllib.request.Request(
-                url,
-                headers={'User-Agent': 'GitHub-Repo-Analyzer/1.0'}
-            )
-
-            # Make API call
-            response = urllib.request.urlopen(req, timeout=10)
-            data = json.loads(response.read().decode('utf-8'))
-
-            return data
-
-        except (urllib.error.HTTPError, urllib.error.URLError, json.JSONDecodeError, TimeoutError):
-            return None
-    
-    def calculate_health_score(self, repo_data: Dict[str, Any]) -> int:
+    def validate_email(self, email: str) -> bool:
         """
-        Calculate repository health score (0-100).
-        
+        Validate email format.
+
         Args:
-            repo_data: Repository data dictionary
-            
+            email: Email to validate
+
         Returns:
-            Health score between 0 and 100
+            True if valid, False otherwise
         """
-        score = 0
-        
-        # Star score (0-40 points): logarithmic scale
-        stars = repo_data.get('stargazers_count', 0)
-        if stars > 0:
-            star_score = min(40, math.log10(stars + 1) * 10)
-            score += star_score
-        
-        # Activity score (0-30 points): based on last update
-        updated_at = repo_data.get('updated_at', '')
-        if updated_at:
-            try:
-                last_update = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
-                now = datetime.now(timezone.utc)
-                days_since_update = (now - last_update).days
-                
-                if days_since_update < 30:
-                    score += 30
-                elif days_since_update < 90:
-                    score += 20
-                elif days_since_update < 180:
-                    score += 10
-            except (ValueError, AttributeError):
-                pass
-        
-        # Issue ratio score (0-15 points): fewer issues is better
-        open_issues = repo_data.get('open_issues_count', 0)
-        issue_ratio = open_issues / (stars + 1)
-        if issue_ratio < 0.01:
-            score += 15
-        elif issue_ratio < 0.05:
-            score += 10
-        elif issue_ratio < 0.1:
-            score += 5
-        
-        # Fork ratio score (0-15 points): more forks is better
-        forks = repo_data.get('forks_count', 0)
-        fork_ratio = forks / (stars + 1)
-        if fork_ratio > 0.5:
-            score += 15
-        elif fork_ratio > 0.2:
-            score += 10
-        elif fork_ratio > 0.1:
-            score += 5
-        
-        return min(100, int(score))
-    
-    def get_health_status(self, score: int) -> str:
+        if not email or '@' not in email:
+            return False
+
+        parts = email.split('@')
+        if len(parts) != 2:
+            return False
+
+        local, domain = parts
+        if not local or not domain or '.' not in domain:
+            return False
+
+        return True
+
+    def validate_age(self, age: int) -> bool:
         """
-        Convert health score to status string.
-        
+        Validate age is within acceptable range.
+
         Args:
-            score: Health score (0-100)
-            
+            age: Age to validate
+
         Returns:
-            Status: "excellent", "good", "fair", or "poor"
+            True if valid, False otherwise
         """
-        if score >= 80:
-            return "excellent"
-        elif score >= 60:
-            return "good"
-        elif score >= 40:
-            return "fair"
-        else:
-            return "poor"
-    
-    def analyze_repository(self, repo_identifier: str) -> Optional[Dict[str, Any]]:
+        return isinstance(age, int) and 13 <= age <= 120
+
+    def create_profile(self, username: str, email: str, age: int,
+                      bio: str = "", location: str = "") -> bool:
         """
-        Perform complete analysis of a repository.
-        
+        Create a new user profile.
+
         Args:
-            repo_identifier: Repository in format "owner/repo"
-            
+            username: Unique username (3-20 alphanumeric)
+            email: User email address
+            age: User age (13-120)
+            bio: Optional biography
+            location: Optional location
+
         Returns:
-            Dictionary with analysis results or None if fetch fails
+            True if created successfully, False if validation fails or user exists
         """
-        repo_data = self.fetch_repository_data(repo_identifier)
-        
-        if not repo_data:
-            return None
-        
-        health_score = self.calculate_health_score(repo_data)
-        health_status = self.get_health_status(health_score)
-        is_active = self.is_actively_maintained(repo_data)
-        
-        return {
-            'repo': repo_identifier,
-            'stars': repo_data.get('stargazers_count', 0),
-            'forks': repo_data.get('forks_count', 0),
-            'open_issues': repo_data.get('open_issues_count', 0),
-            'last_updated': repo_data.get('updated_at', ''),
-            'health_score': health_score,
-            'health_status': health_status,
-            'is_active': is_active
+        # Validate inputs
+        if not self.validate_username(username):
+            return False
+
+        if not self.validate_email(email):
+            return False
+
+        if not self.validate_age(age):
+            return False
+
+        # Check if user already exists (case-insensitive)
+        username_lower = username.lower()
+        if username_lower in self.profiles:
+            return False
+
+        # Create profile
+        self.profiles[username_lower] = {
+            'username': username,
+            'email': email,
+            'age': age,
+            'bio': bio,
+            'location': location
         }
-    
-    def is_actively_maintained(self, repo_data: Dict[str, Any], max_days: int = 180) -> bool:
+
+        return True
+
+    def get_profile(self, username: str) -> Optional[Dict[str, Any]]:
         """
-        Check if repository is actively maintained.
-        
+        Retrieve a user profile.
+
         Args:
-            repo_data: Repository data dictionary
-            max_days: Maximum days since last update (default: 180)
-            
+            username: Username to lookup (case-insensitive)
+
         Returns:
-            True if active, False otherwise
+            Profile dictionary or None if not found
         """
-        updated_at = repo_data.get('updated_at', '')
-        
-        if not updated_at:
-            return False
-        
-        try:
-            last_update = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
-            now = datetime.now(timezone.utc)
-            days_since_update = (now - last_update).days
-            
-            return days_since_update <= max_days
-        except (ValueError, AttributeError):
-            return False
-    
-    def compare_repositories(self, repo_identifiers: List[str]) -> List[Dict[str, Any]]:
+        return self.profiles.get(username.lower())
+
+    def update_profile(self, username: str, email: Optional[str] = None,
+                      age: Optional[int] = None, bio: Optional[str] = None,
+                      location: Optional[str] = None) -> bool:
         """
-        Compare multiple repositories and sort by health score.
-        
+        Update an existing user profile.
+
         Args:
-            repo_identifiers: List of repository identifiers
-            
+            username: Username of profile to update
+            email: New email (optional)
+            age: New age (optional)
+            bio: New bio (optional)
+            location: New location (optional)
+
         Returns:
-            List of analysis results sorted by health score (descending)
+            True if updated successfully, False if user doesn't exist or validation fails
+        """
+        username_lower = username.lower()
+
+        if username_lower not in self.profiles:
+            return False
+
+        # Validate new values if provided
+        if email is not None:
+            if not self.validate_email(email):
+                return False
+            self.profiles[username_lower]['email'] = email
+
+        if age is not None:
+            if not self.validate_age(age):
+                return False
+            self.profiles[username_lower]['age'] = age
+
+        if bio is not None:
+            self.profiles[username_lower]['bio'] = bio
+
+        if location is not None:
+            self.profiles[username_lower]['location'] = location
+
+        return True
+
+    def generate_summary(self, username: str) -> Optional[str]:
+        """
+        Generate a text summary of a user profile.
+
+        Args:
+            username: Username to generate summary for
+
+        Returns:
+            Summary string or None if user doesn't exist
+        """
+        profile = self.get_profile(username)
+
+        if not profile:
+            return None
+
+        bio = profile['bio'] if profile['bio'] else "No bio"
+
+        return f"{profile['username']} ({profile['age']}): {profile['email']} - {bio}"
+
+    def search_by_age(self, min_age: int) -> List[str]:
+        """
+        Find all users at or above a minimum age.
+
+        Args:
+            min_age: Minimum age threshold
+
+        Returns:
+            List of usernames matching criteria
         """
         results = []
-        
-        for repo_id in repo_identifiers:
-            analysis = self.analyze_repository(repo_id)
-            if analysis:
-                results.append(analysis)
-        
-        # Sort by health score (descending)
-        results.sort(key=lambda x: x['health_score'], reverse=True)
 
-        return results
+        for username, profile in self.profiles.items():
+            if profile['age'] >= min_age:
+                results.append(profile['username'])
+
+        return sorted(results)
+
+    def search_by_location(self, location: str) -> List[str]:
+        """
+        Find all users in a location (case-insensitive partial match).
+
+        Args:
+            location: Location string to search for
+
+        Returns:
+            List of usernames matching criteria
+        """
+        results = []
+        location_lower = location.lower()
+
+        for username, profile in self.profiles.items():
+            if location_lower in profile['location'].lower():
+                results.append(profile['username'])
+
+        return sorted(results)

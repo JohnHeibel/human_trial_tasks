@@ -1,68 +1,68 @@
-# Task 2: Simple Rate Counter
+# Task 2: Password Strength Checker
 
 ## Task Description
 
-Implement a rate limiting system that tracks how many requests each user has made and enforces a maximum request limit per time window. This is a common security control to prevent abuse of APIs and services.
+Implement a password strength checker that analyzes passwords and returns a strength rating based on various criteria. This is a fundamental security component that helps users create stronger passwords.
 
 **Core Functionality:**
-- Track request counts for different user identifiers
-- Allow or deny requests based on configured limits
-- Reset counters when needed
-- Handle multiple users independently
+- Analyze a password string and return a strength rating
+- Check for multiple security criteria: length, character diversity, common patterns
+- Provide feedback on what makes a password strong or weak
 
 **Requirements:**
 
-1. **Rate Limit Tracking**: Count requests per user ID within a time window
-   - Each user identified by a unique string identifier (user_id)
-   - Track the number of requests made by each user
-   - Enforce a configurable maximum request limit
+1. **Strength Ratings**: Return one of three strength levels:
+   - `"weak"`: Fails to meet basic security requirements
+   - `"medium"`: Meets some but not all security requirements
+   - `"strong"`: Meets all security requirements
 
-2. **Request Checking**: Determine if a request should be allowed
-   - Accept a user_id and optional request_data
-   - Return `True` if request is allowed (under limit)
-   - Return `False` if request should be blocked (at or over limit)
-   - Increment counter only when request is allowed
+2. **Evaluation Criteria**:
+   - **Length**: Minimum 8 characters for medium, 12+ for strong
+   - **Lowercase letters**: Must contain at least one (a-z)
+   - **Uppercase letters**: Must contain at least one (A-Z)
+   - **Numbers**: Must contain at least one digit (0-9)
+   - **Special characters**: Must contain at least one symbol (!@#$%^&*()_+-=[]{}|;:,.<>?)
 
-3. **Counter Management**:
-   - Get current count for any user
-   - Reset counter for a specific user
-   - Reset all counters
+3. **Strength Rules**:
+   - **Weak**: Less than 8 characters OR missing 3+ character types
+   - **Medium**: 8-11 characters with at least 2 character types OR 12+ characters with only 1-2 character types
+   - **Strong**: 12+ characters with at least 3 character types
 
-4. **Request Data**: Each request includes optional metadata
-   - Request data is a dictionary that may contain: endpoint, method, IP address, timestamp, etc.
-   - This data is logged for audit purposes but doesn't affect rate limiting logic
+4. **Character Type Detection**: Implement a method that returns which character types are present in the password (lowercase, uppercase, digits, special characters)
 
 **Technical Specifications:**
-- Use a dictionary to store user request counts
-- Default rate limit: 100 requests per window
-- User IDs are case-sensitive strings
-- Request data is optional (defaults to empty dict)
+- Handle empty strings (return "weak")
+- Handle unicode characters (treat as special characters if not ASCII letters/digits)
+- Case-sensitive analysis
+- No external libraries needed (use Python's built-in string methods)
 
 ---
 
 ## Background Topics
 
-### What is Rate Limiting?
+### What is Password Strength?
 
-Rate limiting controls how frequently a user or system can make requests to a service. It's essential for:
-- **Preventing abuse**: Stop malicious users from overwhelming your system
-- **Fair resource allocation**: Ensure all users get fair access
-- **Cost control**: Limit expensive operations
-- **DDoS protection**: Mitigate distributed denial-of-service attacks
+Password strength measures how resistant a password is to guessing and brute-force attacks. Stronger passwords:
+- Take longer to crack through brute force
+- Are less likely to be guessed
+- Don't appear in common password dictionaries
 
-### Common Rate Limiting Strategies
+### Character Types Explained
 
-1. **Fixed Window**: Allow N requests per fixed time period (e.g., 100 per hour)
-2. **Sliding Window**: More precise tracking over rolling time periods
-3. **Token Bucket**: Allow bursts but average rate over time
-4. **Leaky Bucket**: Smooth out traffic at a constant rate
+1. **Lowercase letters (a-z)**: The basic alphabet in lowercase
+2. **Uppercase letters (A-Z)**: The basic alphabet in uppercase
+3. **Digits (0-9)**: Numeric characters
+4. **Special characters**: Symbols like `!@#$%^&*()` that add complexity
 
-This implementation uses a simplified fixed window approach focused on request counting.
+### Why Multiple Character Types Matter
 
-### Why Track Request Data?
+Each additional character type increases the "search space" for attackers:
+- Only lowercase (26 characters): 26^8 = ~200 billion combinations for 8 chars
+- Lowercase + uppercase (52 chars): 52^8 = ~53 trillion combinations
+- All types (95 chars): 95^8 = ~6 quadrillion combinations
 
-Production rate limiters typically log request metadata for:
-- **Security auditing**: Identify attack patterns
-- **Debugging**: Understand why limits were hit
-- **Analytics**: Usage patterns and optimization
-- **Compliance**: Record-keeping requirements
+### Length vs Complexity
+
+Modern security guidance emphasizes **length over complexity**:
+- A 16-character password with only lowercase is stronger than an 8-character password with all types
+- But practical systems require both for defense-in-depth

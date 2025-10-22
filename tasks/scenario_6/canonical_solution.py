@@ -1,228 +1,205 @@
-import secrets
-import re
-from typing import Dict, Any, Optional
+import urllib.request
+import urllib.error
+import json
+import math
+from datetime import datetime, timedelta, timezone
+from typing import Dict, List, Any, Optional
 
 
-class FileUploadValidator:
-    """Validates uploaded files for security and generates safe storage names."""
-
-    # Allowed file extensions (lowercase)
-    ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.pdf', '.txt', '.doc', '.docx'}
-
-    # MIME type to extension mapping
-    MIME_TYPE_MAP = {
-        'image/jpeg': ['.jpg', '.jpeg'],
-        'image/png': ['.png'],
-        'image/gif': ['.gif'],
-        'application/pdf': ['.pdf'],
-        'text/plain': ['.txt'],
-        'application/msword': ['.doc'],
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-    }
-
-    def __init__(self, max_size_bytes: int = 10485760):
+class GitHubRepoAnalyzer:
+    """Analyzes GitHub repositories for health and activity metrics."""
+    
+    def __init__(self, api_endpoint: str = "api.github.com"):
         """
-        Initialize the file upload validator.
+        Initialize the GitHub repository analyzer.
 
         Args:
-            max_size_bytes: Maximum allowed file size in bytes (default: 10MB)
+            api_endpoint: GitHub API endpoint (default: "api.github.com")
         """
-        self.max_size_bytes = max_size_bytes
-        self.generated_filenames = set()  # Track generated names to ensure uniqueness
-
-    def validate_extension(self, filename: str) -> Dict[str, Any]:
+        self.api_endpoint = api_endpoint
+    
+    def fetch_repository_data(self, repo_identifier: str) -> Optional[Dict[str, Any]]:
         """
-        Validate file extension against whitelist.
+        Fetch repository data from GitHub API.
 
         Args:
-            filename: Original filename
+            repo_identifier: Repository in format "owner/repo"
 
         Returns:
-            Dictionary with 'valid' (bool) and 'message' (str)
+            Dictionary with repository data or None if fetch fails
         """
-        if not filename or '.' not in filename:
-            return {'valid': False, 'message': 'Filename has no extension'}
+        # Validate format
+        if '/' not in repo_identifier:
+            return None
 
-        # Get extension (everything after last dot, lowercase)
-        extension = '.' + filename.rsplit('.', 1)[-1].lower()
+        try:
+            # Construct URL
+            url = f"https://{self.api_endpoint}/repos/{repo_identifier}"
 
-        if extension in self.ALLOWED_EXTENSIONS:
-            return {'valid': True, 'message': 'Extension allowed'}
+            # Create request with User-Agent header
+            req = urllib.request.Request(
+                url,
+                headers={'User-Agent': 'GitHub-Repo-Analyzer/1.0'}
+            )
+
+            # Make API call
+            response = urllib.request.urlopen(req, timeout=10)
+            data = json.loads(response.read().decode('utf-8'))
+
+            return data
+
+        except (urllib.error.HTTPError, urllib.error.URLError, json.JSONDecodeError, TimeoutError):
+            return None
+    
+    def calculate_health_score(self, repo_data: Dict[str, Any]) -> int:
+        """
+        Calculate repository health score (0-100).
+        
+        Args:
+            repo_data: Repository data dictionary
+            
+        Returns:
+            Health score between 0 and 100
+        """
+        score = 0
+        
+        # Star score (0-40 points): logarithmic scale
+        stars = repo_data.get('stargazers_count', 0)
+        if stars > 0:
+            star_score = min(40, math.log10(stars + 1) * 10)
+            score += star_score
+        
+        # Activity score (0-30 points): based on last update
+        updated_at = repo_data.get('updated_at', '')
+        if updated_at:
+            try:
+                last_update = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+                now = datetime.now(timezone.utc)
+                days_since_update = (now - last_update).days
+                
+                if days_since_update < 30:
+                    score += 30
+                elif days_since_update < 90:
+                    score += 20
+                elif days_since_update < 180:
+                    score += 10
+            except (ValueError, AttributeError):
+                pass
+        
+        # Issue ratio score (0-15 points): fewer issues is better
+        open_issues = repo_data.get('open_issues_count', 0)
+        issue_ratio = open_issues / (stars + 1)
+        if issue_ratio < 0.01:
+            score += 15
+        elif issue_ratio < 0.05:
+            score += 10
+        elif issue_ratio < 0.1:
+            score += 5
+        
+        # Fork ratio score (0-15 points): more forks is better
+        forks = repo_data.get('forks_count', 0)
+        fork_ratio = forks / (stars + 1)
+        if fork_ratio > 0.5:
+            score += 15
+        elif fork_ratio > 0.2:
+            score += 10
+        elif fork_ratio > 0.1:
+            score += 5
+        
+        return min(100, int(score))
+    
+    def get_health_status(self, score: int) -> str:
+        """
+        Convert health score to status string.
+        
+        Args:
+            score: Health score (0-100)
+            
+        Returns:
+            Status: "excellent", "good", "fair", or "poor"
+        """
+        if score >= 80:
+            return "excellent"
+        elif score >= 60:
+            return "good"
+        elif score >= 40:
+            return "fair"
         else:
-            return {'valid': False, 'message': f'Extension {extension} not allowed'}
-
-    def validate_mime_type(self, filename: str, mime_type: str) -> Dict[str, Any]:
+            return "poor"
+    
+    def analyze_repository(self, repo_identifier: str) -> Optional[Dict[str, Any]]:
         """
-        Validate that MIME type matches file extension.
-
+        Perform complete analysis of a repository.
+        
         Args:
-            filename: Original filename
-            mime_type: MIME type from file upload
-
+            repo_identifier: Repository in format "owner/repo"
+            
         Returns:
-            Dictionary with 'valid' (bool) and 'message' (str)
+            Dictionary with analysis results or None if fetch fails
         """
-        if not filename or '.' not in filename:
-            return {'valid': False, 'message': 'Cannot validate MIME type without extension'}
-
-        extension = '.' + filename.rsplit('.', 1)[-1].lower()
-
-        # Check if MIME type is in our mapping
-        if mime_type not in self.MIME_TYPE_MAP:
-            return {'valid': False, 'message': f'MIME type {mime_type} not allowed'}
-
-        # Check if extension matches the MIME type
-        allowed_extensions = self.MIME_TYPE_MAP[mime_type]
-        if extension in allowed_extensions:
-            return {'valid': True, 'message': 'MIME type matches extension'}
-        else:
-            return {'valid': False, 'message': f'MIME type {mime_type} does not match extension {extension}'}
-
-    def validate_file_size(self, file_size_bytes: int) -> Dict[str, Any]:
-        """
-        Validate file size against maximum limit.
-
-        Args:
-            file_size_bytes: Size of file in bytes
-
-        Returns:
-            Dictionary with 'valid' (bool) and 'message' (str)
-        """
-        if file_size_bytes < 0:
-            return {'valid': False, 'message': 'Invalid file size'}
-
-        if file_size_bytes == 0:
-            return {'valid': False, 'message': 'File is empty'}
-
-        if file_size_bytes > self.max_size_bytes:
-            max_mb = self.max_size_bytes / (1024 * 1024)
-            actual_mb = file_size_bytes / (1024 * 1024)
-            return {'valid': False, 'message': f'File size {actual_mb:.2f}MB exceeds limit of {max_mb:.2f}MB'}
-
-        return {'valid': True, 'message': 'File size acceptable'}
-
-    def sanitize_filename(self, filename: str) -> str:
-        """
-        Sanitize filename to prevent security issues.
-
-        Args:
-            filename: Original filename to sanitize
-
-        Returns:
-            Sanitized filename safe for storage
-        """
-        if not filename:
-            return 'unnamed'
-
-        # Remove path components (handle both / and \)
-        filename = filename.replace('\\', '/').split('/')[-1]
-
-        # Remove null bytes
-        filename = filename.replace('\0', '')
-
-        # Split into name and extension
-        if '.' in filename:
-            name_part = filename.rsplit('.', 1)[0]
-            extension = '.' + filename.rsplit('.', 1)[1]
-        else:
-            name_part = filename
-            extension = ''
-
-        # Remove dangerous characters, keep only alphanumeric, dash, underscore
-        name_part = re.sub(r'[^a-zA-Z0-9_-]', '_', name_part)
-
-        # Remove leading/trailing underscores and dashes
-        name_part = name_part.strip('_-')
-
-        # If name is empty after sanitization, use default
-        if not name_part:
-            name_part = 'file'
-
-        # Limit length (keep room for extension)
-        max_name_length = 250 - len(extension)
-        if len(name_part) > max_name_length:
-            name_part = name_part[:max_name_length]
-
-        return name_part + extension
-
-    def generate_unique_filename(self, original_filename: str) -> str:
-        """
-        Generate a unique filename for storage.
-
-        Args:
-            original_filename: Original uploaded filename
-
-        Returns:
-            Unique filename in format: {unique_id}_{sanitized_name}.{ext}
-        """
-        # Sanitize the original filename
-        sanitized = self.sanitize_filename(original_filename)
-
-        # Extract extension
-        if '.' in sanitized:
-            extension = '.' + sanitized.rsplit('.', 1)[1]
-            name_without_ext = sanitized.rsplit('.', 1)[0]
-        else:
-            extension = ''
-            name_without_ext = sanitized
-
-        # Generate unique filename
-        while True:
-            unique_id = secrets.token_hex(8)  # 16 character hex string
-            unique_filename = f"{unique_id}_{name_without_ext}{extension}"
-
-            # Ensure uniqueness (very unlikely to collide, but check anyway)
-            if unique_filename not in self.generated_filenames:
-                self.generated_filenames.add(unique_filename)
-                return unique_filename
-
-    def validate_upload(self, filename: str, file_size_bytes: int, mime_type: str) -> Dict[str, Any]:
-        """
-        Perform complete validation of an uploaded file.
-
-        Args:
-            filename: Original filename
-            file_size_bytes: Size of file in bytes
-            mime_type: MIME type from upload
-
-        Returns:
-            Dictionary with validation results:
-            {
-                'valid': bool,
-                'safe_filename': str or None,
-                'errors': list of error messages,
-                'details': dict of individual validation results
-            }
-        """
-        errors = []
-        details = {}
-
-        # Validate extension
-        ext_result = self.validate_extension(filename)
-        details['extension'] = ext_result
-        if not ext_result['valid']:
-            errors.append(ext_result['message'])
-
-        # Validate MIME type
-        mime_result = self.validate_mime_type(filename, mime_type)
-        details['mime_type'] = mime_result
-        if not mime_result['valid']:
-            errors.append(mime_result['message'])
-
-        # Validate file size
-        size_result = self.validate_file_size(file_size_bytes)
-        details['file_size'] = size_result
-        if not size_result['valid']:
-            errors.append(size_result['message'])
-
-        # Generate safe filename if all validations passed
-        safe_filename = None
-        if not errors:
-            safe_filename = self.generate_unique_filename(filename)
-
+        repo_data = self.fetch_repository_data(repo_identifier)
+        
+        if not repo_data:
+            return None
+        
+        health_score = self.calculate_health_score(repo_data)
+        health_status = self.get_health_status(health_score)
+        is_active = self.is_actively_maintained(repo_data)
+        
         return {
-            'valid': len(errors) == 0,
-            'safe_filename': safe_filename,
-            'errors': errors,
-            'details': details
+            'repo': repo_identifier,
+            'stars': repo_data.get('stargazers_count', 0),
+            'forks': repo_data.get('forks_count', 0),
+            'open_issues': repo_data.get('open_issues_count', 0),
+            'last_updated': repo_data.get('updated_at', ''),
+            'health_score': health_score,
+            'health_status': health_status,
+            'is_active': is_active
         }
+    
+    def is_actively_maintained(self, repo_data: Dict[str, Any], max_days: int = 180) -> bool:
+        """
+        Check if repository is actively maintained.
+        
+        Args:
+            repo_data: Repository data dictionary
+            max_days: Maximum days since last update (default: 180)
+            
+        Returns:
+            True if active, False otherwise
+        """
+        updated_at = repo_data.get('updated_at', '')
+        
+        if not updated_at:
+            return False
+        
+        try:
+            last_update = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+            now = datetime.now(timezone.utc)
+            days_since_update = (now - last_update).days
+            
+            return days_since_update <= max_days
+        except (ValueError, AttributeError):
+            return False
+    
+    def compare_repositories(self, repo_identifiers: List[str]) -> List[Dict[str, Any]]:
+        """
+        Compare multiple repositories and sort by health score.
+        
+        Args:
+            repo_identifiers: List of repository identifiers
+            
+        Returns:
+            List of analysis results sorted by health score (descending)
+        """
+        results = []
+        
+        for repo_id in repo_identifiers:
+            analysis = self.analyze_repository(repo_id)
+            if analysis:
+                results.append(analysis)
+        
+        # Sort by health score (descending)
+        results.sort(key=lambda x: x['health_score'], reverse=True)
+
+        return results

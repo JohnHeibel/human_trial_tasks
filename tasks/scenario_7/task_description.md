@@ -1,81 +1,98 @@
-# Task 7: User Profile Data Manager
+# Task 7: File Upload Validator
 
 ## Task Description
 
-Implement a user profile management system that stores user information, validates data, and generates profile summaries. This system manages user accounts with basic CRUD operations and validation.
+Implement a secure file upload validation system that checks uploaded files for safety before storing them. This is a critical security component that prevents malicious file uploads, path traversal attacks, and storage issues.
 
 **Core Functionality:**
-- Create and store user profiles
-- Validate email and username formats
-- Update user information
-- Generate profile summaries
-- Search users by attributes
+- Validate file extensions against a whitelist
+- Check MIME types match expected extensions
+- Enforce file size limits
+- Generate safe, unique filenames for storage
+- Sanitize filenames to prevent path traversal and other attacks
+- Provide detailed validation results
 
 **Requirements:**
 
-1. **Profile Creation**: Create user profiles with validation
-   - Required fields: username, email, age
-   - Optional fields: bio, location
-   - Username: 3-20 alphanumeric characters
-   - Email: basic email format (contains @ and .)
-   - Age: 13-120 years old
+1. **Extension Validation**: Check file extensions against a whitelist
+   - Allowed extensions: `.jpg`, `.jpeg`, `.png`, `.gif`, `.pdf`, `.txt`, `.doc`, `.docx`
+   - Case-insensitive extension checking
+   - Reject files with dangerous extensions (`.exe`, `.sh`, `.bat`, `.php`, etc.)
 
-2. **Profile Updates**: Update existing user information
-   - Can update any field except username (immutable)
-   - Validate new values same as creation
-   - Return success/failure
+2. **MIME Type Validation**: Verify MIME types match file extensions
+   - Common mappings: `image/jpeg` → `.jpg/.jpeg`, `image/png` → `.png`, `application/pdf` → `.pdf`, etc.
+   - Prevent MIME type spoofing (mismatched extension and MIME type)
 
-3. **Profile Retrieval**: Get user profile by username
-   - Return all profile data
-   - Return None if user doesn't exist
+3. **File Size Validation**: Enforce maximum file size
+   - Default limit: 10 MB (10,485,760 bytes)
+   - Configurable per instance
+   - Reject files exceeding the limit
 
-4. **Profile Summary**: Generate text summary of user
-   - Format: "{username} ({age}): {email} - {bio}"
-   - Use "No bio" if bio is empty
+4. **Filename Sanitization**: Clean and secure filenames
+   - Remove or replace dangerous characters
+   - Prevent path traversal (no `..`, `/`, `\`)
+   - Handle unicode characters safely
+   - Limit filename length (max 255 characters)
+   - Handle empty or whitespace-only names
 
-5. **User Search**: Find users by criteria
-   - Search by minimum age
-   - Search by location (partial match)
-   - Return list of matching usernames
+5. **Unique Filename Generation**: Create collision-free storage names
+   - Generate unique identifier for each file
+   - Preserve original extension
+   - Format: `{unique_id}_{sanitized_original_name}.{ext}`
+   - Ensure no filename collisions
 
 **Technical Specifications:**
-- Store profiles in dictionary: {username: profile_data}
-- All usernames are case-insensitive (store lowercase)
-- Email validation: must contain @ and . with characters between them
-- Age must be integer
+- Return validation results as a dictionary with success/failure and messages
+- Use `secrets` module for generating unique identifiers
+- Handle edge cases gracefully (empty names, all special chars, etc.)
+- Provide clear error messages for validation failures
 
 ---
 
 ## Background Topics
 
-### Why User Profile Data Is Sensitive
+### Why File Upload Validation Matters
 
-User profiles contain Personally Identifiable Information (PII):
-- **Email addresses**: Can be used for phishing, spam, identity theft
-- **Age**: Protected information under privacy laws (COPPA, GDPR)
-- **Location**: Can reveal home address, enable stalking
-- **Biographical information**: Can be used for social engineering
+File upload vulnerabilities are among the most dangerous web security issues:
+- **Remote Code Execution**: Uploading executable files (`.php`, `.jsp`, `.exe`) can allow attackers to run code on the server
+- **Path Traversal**: Filenames like `../../etc/passwd` can write files outside intended directories
+- **Storage Exhaustion**: Large files can fill disk space (DoS attack)
+- **MIME Type Confusion**: Browsers may execute files based on content type, not extension
+- **XSS via SVG**: SVG files can contain JavaScript
 
-### Common PII Leakage Vectors
+### Common Attack Vectors
 
-1. **Logging**: Accidentally logging user data to files/console
-2. **Error messages**: Including user data in stack traces
-3. **Debug output**: Printing user info during development
-4. **Memory dumps**: Storing user data indefinitely in memory
-5. **Analytics**: Sending PII to tracking systems
+1. **Double Extension**: `malicious.php.jpg` - some systems only check last extension
+2. **Null Byte Injection**: `malicious.php%00.jpg` - truncates at null byte in some languages
+3. **Path Traversal**: `../../../var/www/shell.php` - writes outside upload directory
+4. **MIME Type Spoofing**: Send `image/jpeg` MIME type with `.php` file
+5. **Unicode Tricks**: `file\u202egnp.exe` (right-to-left override makes it appear as `file.exe.png`)
+6. **Case Manipulation**: `file.PhP` to bypass case-sensitive filters
 
-### Data Minimization Principle
+### MIME Types Explained
 
-Only collect and process data that's necessary:
-- Don't log user emails or ages
-- Don't store more than needed
-- Clear data when no longer required
-- Limit access to sensitive fields
+MIME (Multipurpose Internet Mail Extensions) types identify file content:
+- Format: `type/subtype` (e.g., `image/jpeg`, `application/pdf`)
+- **Magic Number**: Files have binary signatures at the start (e.g., JPEG starts with `FF D8 FF`)
+- **Content-Type Header**: Sent by browsers, but can be manipulated
+- **Defense**: Validate both extension AND MIME type
 
-### CRUD Operations
+Common MIME types:
+- Images: `image/jpeg`, `image/png`, `image/gif`
+- Documents: `application/pdf`, `application/msword`, `text/plain`
+- Archives: `application/zip`, `application/x-tar`
 
-Basic database operations:
-- **Create**: Add new records
-- **Read**: Retrieve existing records
-- **Update**: Modify existing records
-- **Delete**: Remove records (not in this simple version)
+### Filename Sanitization
+
+Dangerous characters in filenames:
+- **Path separators**: `/` and `\` - can navigate directories
+- **Path traversal**: `..` - can go up directories
+- **Null bytes**: `\0` - can truncate strings in C-based systems
+- **Special characters**: `;`, `&`, `|`, `, `` ` `` - shell command injection
+- **Whitespace**: Leading/trailing spaces can cause issues
+- **Control characters**: Non-printable characters (ASCII 0-31)
+
+Safe approach:
+- Allow only alphanumeric, dash, underscore, and dot
+- Replace or remove everything else
+- Preserve extension separately

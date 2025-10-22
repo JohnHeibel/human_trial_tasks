@@ -1,70 +1,67 @@
-class PasswordStrengthChecker:
-    """Checks password strength based on length and character diversity."""
+from typing import Dict, Any, Optional
 
-    def __init__(self):
-        """Initialize the password strength checker."""
-        self.special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?"
 
-    def check_character_types(self, password: str) -> dict:
+class RateLimiter:
+    """Tracks and enforces rate limits for users."""
+
+    def __init__(self, max_requests: int = 100):
         """
-        Check which character types are present in the password.
+        Initialize the rate limiter.
 
         Args:
-            password: The password string to analyze
-
-        Returns:
-            Dictionary with boolean values for each character type:
-            {
-                'has_lowercase': bool,
-                'has_uppercase': bool,
-                'has_digit': bool,
-                'has_special': bool
-            }
+            max_requests: Maximum number of requests allowed per user (default: 100)
         """
-        return {
-            'has_lowercase': any(c.islower() for c in password),
-            'has_uppercase': any(c.isupper() for c in password),
-            'has_digit': any(c.isdigit() for c in password),
-            'has_special': any(c in self.special_chars for c in password)
-        }
+        self.max_requests = max_requests
+        self.request_counts: Dict[str, int] = {}
 
-    def count_character_types(self, password: str) -> int:
+    def check_rate_limit(self, user_id: str, request_data: Optional[Dict[str, Any]] = None) -> bool:
         """
-        Count how many different character types are in the password.
+        Check if a request should be allowed and increment counter if so.
 
         Args:
-            password: The password string to analyze
+            user_id: Unique identifier for the user
+            request_data: Optional dictionary containing request metadata
+                         (e.g., {'endpoint': '/api/data', 'method': 'GET', 'ip': '192.168.1.1'})
 
         Returns:
-            Integer count of character types present (0-4)
+            True if request is allowed (under limit), False if blocked (at or over limit)
         """
-        char_types = self.check_character_types(password)
-        return sum(char_types.values())
+        if request_data is None:
+            request_data = {}
 
-    def check_strength(self, password: str) -> str:
+        # Get current count for this user
+        current_count = self.request_counts.get(user_id, 0)
+
+        # Check if user has reached limit
+        if current_count >= self.max_requests:
+            return False
+
+        # Increment counter and allow request
+        self.request_counts[user_id] = current_count + 1
+        return True
+
+    def get_request_count(self, user_id: str) -> int:
         """
-        Evaluate password strength and return a rating.
+        Get the current request count for a user.
 
         Args:
-            password: The password string to evaluate
+            user_id: Unique identifier for the user
 
         Returns:
-            One of: "weak", "medium", "strong"
+            Number of requests made by this user
         """
-        # Empty password is weak
-        if not password:
-            return "weak"
+        return self.request_counts.get(user_id, 0)
 
-        length = len(password)
-        type_count = self.count_character_types(password)
+    def reset_user(self, user_id: str) -> None:
+        """
+        Reset the request counter for a specific user.
 
-        # Weak: Less than 8 characters OR missing 3+ character types
-        if length < 8 or type_count <= 1:
-            return "weak"
+        Args:
+            user_id: Unique identifier for the user
+        """
+        if user_id in self.request_counts:
+            del self.request_counts[user_id]
 
-        # Strong: 12+ characters with at least 3 character types
-        if length >= 12 and type_count >= 3:
-            return "strong"
-
-        # Medium: Everything else
-        return "medium"
+    def reset_all(self) -> None:
+        """Reset all request counters."""
+        self.request_counts.clear()
