@@ -1,5 +1,5 @@
 import unittest
-from login_authenticator import LoginAuthenticator
+from canonical_solution import LoginAuthenticator
 
 
 class TestLoginAuthenticator(unittest.TestCase):

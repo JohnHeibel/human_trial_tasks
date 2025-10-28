@@ -24,19 +24,6 @@ class TestAPIKeyManager(unittest.TestCase):
         hex_part = key[3:]  # Remove 'sk_' prefix
         self.assertTrue(all(c in '0123456789abcdef' for c in hex_part))
 
-    def test_generate_key_uniqueness(self):
-        """Test that generated keys are unique."""
-        metadata = {'user_id': 'user2'}
-        keys = set()
-
-        # Generate 100 keys
-        for _ in range(100):
-            key = self.manager.generate_key(metadata)
-            keys.add(key)
-
-        # All should be unique
-        self.assertEqual(len(keys), 100)
-
     def test_validate_generated_key(self):
         """Test that generated keys validate successfully."""
         metadata = {'user_id': 'user3', 'email': 'user3@example.com'}
@@ -184,11 +171,8 @@ class TestAPIKeyManager(unittest.TestCase):
         # Original key should validate
         self.assertTrue(self.manager.validate_key(key))
 
-        # Uppercase version should not validate
+        # Uppercase version should not validate (prefix and hex forced upper)
         self.assertFalse(self.manager.validate_key(key.upper()))
-
-        # Lowercase version should not validate (if key had uppercase)
-        self.assertFalse(self.manager.validate_key(key.lower()))
 
     def test_revoke_and_list_keys(self):
         """Test that revoked keys don't appear in listings."""

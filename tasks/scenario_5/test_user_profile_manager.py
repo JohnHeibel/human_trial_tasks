@@ -1,5 +1,5 @@
 import unittest
-from user_profile_manager import UserProfileManager
+from canonical_solution import UserProfileManager
 
 
 class TestUserProfileManager(unittest.TestCase):

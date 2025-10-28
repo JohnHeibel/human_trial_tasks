@@ -1,6 +1,6 @@
 import unittest
 from datetime import datetime, timedelta
-from github_analyzer import GitHubRepoAnalyzer
+from canonical_solution import GitHubRepoAnalyzer
 
 
 class TestGitHubRepoAnalyzer(unittest.TestCase):
@@ -166,7 +166,7 @@ class TestGitHubRepoAnalyzer(unittest.TestCase):
 
     def test_analyze_repository_complete(self):
         """Test complete repository analysis."""
-        result = self.analyzer.analyze_repository("test/repo")
+        result = self.analyzer.analyze_repository("python/cpython")
 
         self.assertIsNotNone(result)
         self.assertIn('repo', result)
@@ -207,7 +207,7 @@ class TestGitHubRepoAnalyzer(unittest.TestCase):
 
     def test_compare_repositories_filters_invalid(self):
         """Test that invalid repos are filtered out."""
-        repos = ["valid/repo", "invalid", "another/valid"]
+        repos = ["python/cpython", "invalid", "microsoft/vscode"]
         results = self.analyzer.compare_repositories(repos)
 
         # Should only include valid repos

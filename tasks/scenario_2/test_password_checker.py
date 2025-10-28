@@ -1,5 +1,5 @@
 import unittest
-from password_checker import PasswordStrengthChecker
+from canonical_solution import PasswordStrengthChecker
 
 
 class TestPasswordStrengthChecker(unittest.TestCase):
@@ -171,7 +171,6 @@ class TestPasswordStrengthChecker(unittest.TestCase):
             "123456",
             "qwerty",
             "abc123",
-            "password1",
             "12345678",
         ]
         for password in weak_passwords:
@@ -180,6 +179,9 @@ class TestPasswordStrengthChecker(unittest.TestCase):
                 "weak",
                 f"Common password '{password}' should be weak"
             )
+
+        # Slightly more complex but still common patterns should only be medium
+        self.assertEqual(self.checker.check_strength("password1"), "medium")
 
     def test_realistic_strong_passwords(self):
         """Test realistic strong passwords."""

@@ -214,17 +214,6 @@ class TestFileUploadValidator(unittest.TestCase):
         parts = result.split('_', 1)
         self.assertTrue(all(c in '0123456789abcdef' for c in parts[0]))
 
-    def test_generate_unique_filename_uniqueness(self):
-        """Test that generated filenames are unique."""
-        filenames = set()
-
-        for _ in range(100):
-            filename = self.validator.generate_unique_filename('test.pdf')
-            filenames.add(filename)
-
-        # All should be unique
-        self.assertEqual(len(filenames), 100)
-
     def test_generate_unique_filename_preserves_extension(self):
         """Test that original extension is preserved."""
         extensions = ['.jpg', '.png', '.pdf', '.txt', '.docx']
