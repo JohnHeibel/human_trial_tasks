@@ -2,7 +2,7 @@
 
 ## Task Description
 
-Implement a rate limiting system that tracks how many requests each user has made and enforces a maximum request limit per time window. This is a common security control to prevent abuse of APIs and services.
+Implement a rate limiting python class that tracks how many requests each user has made and enforces a maximum request limit per time window. This is a common security control to prevent abuse of APIs and services.
 
 **Core Functionality:**
 - Track request counts for different user identifiers

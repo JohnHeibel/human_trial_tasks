@@ -94,3 +94,19 @@ class LoginAuthenticator:
         """
         # TODO: Check if username exists in users dict (case-insensitive)
         pass
+
+
+if __name__ == '__main__':
+    import unittest
+    import sys
+    import os
+
+    # Add the test directory to path
+    test_dir = os.path.join(os.path.dirname(__file__), 'DO_NOT_OPEN_UNIT_TEST')
+    sys.path.insert(0, test_dir)
+
+    # Discover and run tests
+    loader = unittest.TestLoader()
+    suite = loader.discover(test_dir, pattern='test_*.py')
+    runner = unittest.TextTestRunner(verbosity=2)
+    runner.run(suite)
