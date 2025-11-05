@@ -1,5 +1,8 @@
 import unittest
-from canonical_solution import RateLimiter
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from rate_limiter import RateLimiter
 
 
 class TestRateLimiter(unittest.TestCase):

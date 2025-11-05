@@ -1,6 +1,9 @@
 import unittest
 from datetime import datetime, timedelta
-from canonical_solution import GitHubRepoAnalyzer
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from github_analyzer import GitHubRepoAnalyzer
 
 
 class TestGitHubRepoAnalyzer(unittest.TestCase):

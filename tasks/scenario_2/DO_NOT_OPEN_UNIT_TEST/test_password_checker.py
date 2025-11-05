@@ -1,5 +1,8 @@
 import unittest
-from canonical_solution import PasswordStrengthChecker
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from password_checker import PasswordStrengthChecker
 
 
 class TestPasswordStrengthChecker(unittest.TestCase):

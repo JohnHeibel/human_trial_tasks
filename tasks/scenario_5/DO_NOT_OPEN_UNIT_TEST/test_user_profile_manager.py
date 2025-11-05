@@ -1,5 +1,8 @@
 import unittest
-from canonical_solution import UserProfileManager
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from user_profile_manager import UserProfileManager
 
 
 class TestUserProfileManager(unittest.TestCase):

@@ -1,5 +1,8 @@
 import unittest
-from canonical_solution import FileUploadValidator
+import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from file_upload_validator import FileUploadValidator
 
 
 class TestFileUploadValidator(unittest.TestCase):
