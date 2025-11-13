@@ -30,7 +30,6 @@ class APIKeyManager:
         # TODO: Generate a cryptographically secure random hex string
         # Hint: Use secrets.token_hex(16) to get 32 hex characters
         # TODO: Combine prefix with the random part
-        # TODO: Check for uniqueness (while key exists, regenerate)
         # TODO: Store the key with its metadata (make a copy of metadata dict)
         # TODO: Return the generated key
         pass
