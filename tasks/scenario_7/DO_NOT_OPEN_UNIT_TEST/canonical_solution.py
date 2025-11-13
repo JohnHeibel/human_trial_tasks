@@ -167,14 +167,10 @@ class FileUploadValidator:
             name_without_ext = sanitized
 
         # Generate unique filename
-        while True:
-            unique_id = secrets.token_hex(8)  # 16 character hex string
-            unique_filename = f"{unique_id}_{name_without_ext}{extension}"
-
-            # Ensure uniqueness (very unlikely to collide, but check anyway)
-            if unique_filename not in self.generated_filenames:
-                self.generated_filenames.add(unique_filename)
-                return unique_filename
+        unique_id = secrets.token_hex(8)  # 16 character hex string
+        unique_filename = f"{unique_id}_{name_without_ext}{extension}"
+        self.generated_filenames.add(unique_filename)
+        return unique_filename
 
     def validate_upload(self, filename: str, file_size_bytes: int, mime_type: str) -> Dict[str, Any]:
         """

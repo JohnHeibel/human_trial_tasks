@@ -32,11 +32,6 @@ class APIKeyManager:
         # Combine prefix with random part
         api_key = f"{self.prefix}{random_part}"
 
-        # Ensure uniqueness (very unlikely to collide, but check anyway)
-        while api_key in self.keys:
-            random_part = secrets.token_hex(16)
-            api_key = f"{self.prefix}{random_part}"
-
         # Store key with metadata
         self.keys[api_key] = metadata.copy()
 
